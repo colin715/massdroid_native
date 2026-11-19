@@ -444,6 +444,15 @@ class LibraryViewModel @Inject constructor(
     fun setPlaylistPinned(uri: String, pinned: Boolean) {
         viewModelScope.launch { settingsRepository.setPlaylistPinned(uri, pinned) }
     }
+
+    /** URIs pinned to Home, for the action sheet's Pin to Home / Unpin from Home label. */
+    val homePinUris: StateFlow<Set<String>> = settingsRepository.homePins
+        .map { pins -> pins.mapTo(mutableSetOf()) { it.uri } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    fun setHomePinned(pin: net.asksakis.massdroidv2.domain.model.HomePin, pinned: Boolean) {
+        viewModelScope.launch { settingsRepository.setHomePinned(pin, pinned) }
+    }
     val radios: StateFlow<List<Radio>> = radiosPager.items
     val audiobooks: StateFlow<List<Track>> = audiobooksPager.items
     val podcasts: StateFlow<List<Podcast>> = podcastsPager.items

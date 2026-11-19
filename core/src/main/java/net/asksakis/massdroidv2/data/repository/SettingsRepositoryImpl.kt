@@ -177,6 +177,7 @@ class SettingsRepositoryImpl @Inject constructor(
         private val KEY_KNOWN_BT_DEVICES = stringPreferencesKey("known_bt_devices")
         private val KEY_CAR_AUDIO_BT_DEVICES = stringPreferencesKey("car_audio_bt_devices")
         private val KEY_PINNED_PLAYLISTS = stringPreferencesKey("pinned_playlists")
+        private val KEY_HOME_PINS = stringPreferencesKey("home_pins")
         private val KEY_SENDSPIN_LAST_VOLUME = stringPreferencesKey("sendspin_last_volume")
         private val KEY_RECENT_SEED_CLUSTERS = stringPreferencesKey("recent_seed_cluster_genres")
         private val KEY_RECENT_MIX_TRACKS = stringPreferencesKey("recent_mix_track_uris")
@@ -753,6 +754,18 @@ class SettingsRepositoryImpl @Inject constructor(
                 ?: mutableSetOf()
             val changed = if (pinned) current.add(uri) else current.remove(uri)
             if (changed) prefs[KEY_PINNED_PLAYLISTS] = current.joinToString("\n")
+        }
+    }
+
+    override val homePins: Flow<List<net.asksakis.massdroidv2.domain.model.HomePin>> =
+        safeData.map { prefs -> net.asksakis.massdroidv2.domain.model.HomePin.decode(prefs[KEY_HOME_PINS]) }
+
+    override suspend fun setHomePinned(pin: net.asksakis.massdroidv2.domain.model.HomePin, pinned: Boolean) {
+        if (pin.uri.isBlank()) return
+        context.dataStore.edit { prefs ->
+            val current = net.asksakis.massdroidv2.domain.model.HomePin.decode(prefs[KEY_HOME_PINS])
+            val updated = net.asksakis.massdroidv2.domain.model.HomePin.applyPin(current, pin, pinned)
+            prefs[KEY_HOME_PINS] = net.asksakis.massdroidv2.domain.model.HomePin.encode(updated)
         }
     }
 

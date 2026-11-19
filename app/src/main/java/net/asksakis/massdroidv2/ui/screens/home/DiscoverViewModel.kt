@@ -88,6 +88,14 @@ class DiscoverViewModel @Inject constructor(
     private val _smartMixMessage = MutableStateFlow<String?>(null)
     val smartMixMessage: StateFlow<String?> = _smartMixMessage.asStateFlow()
     val connectionState: StateFlow<ConnectionState> = wsClient.connectionState
+
+    /** Albums and playlists pinned to Home, newest first. Local, drawn before the feed. */
+    val homePins: StateFlow<List<net.asksakis.massdroidv2.domain.model.HomePin>> = settingsRepository.homePins
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    fun unpinFromHome(pin: net.asksakis.massdroidv2.domain.model.HomePin) {
+        viewModelScope.launch { settingsRepository.setHomePinned(pin, false) }
+    }
     private val _connectionProbe = MutableStateFlow(ConnectionProbeState())
     val connectionProbe: StateFlow<ConnectionProbeState> = _connectionProbe.asStateFlow()
 

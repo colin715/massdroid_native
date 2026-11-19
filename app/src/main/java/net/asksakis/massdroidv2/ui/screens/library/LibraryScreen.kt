@@ -32,6 +32,9 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Nfc
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.outlined.Home
+import net.asksakis.massdroidv2.domain.model.HomePin
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
@@ -108,6 +111,7 @@ fun LibraryScreen(
     val tracks by viewModel.tracks.collectAsStateWithLifecycle()
     val playlists by viewModel.playlists.collectAsStateWithLifecycle()
     val pinnedPlaylistUris by viewModel.pinnedPlaylistUris.collectAsStateWithLifecycle()
+    val homePinUris by viewModel.homePinUris.collectAsStateWithLifecycle()
     val playlistTypeFilter by viewModel.playlistTypeFilter.collectAsStateWithLifecycle()
     val accountName by viewModel.accountName.collectAsStateWithLifecycle()
     val radios by viewModel.radios.collectAsStateWithLifecycle()
@@ -718,6 +722,9 @@ fun LibraryScreen(
                     )
                 }
                 else -> emptyList()
+            } + homePinActions(target, homePinUris) { pin, pinned ->
+                viewModel.setHomePinned(pin, pinned)
+                actionSheetUri = null
             } + smartPlaylistActions + nfcActions,
             onPlayNow = { viewModel.playUri(target.uri) },
             onPlayOnPlayer = { player -> viewModel.playOnPlayer(target.uri, player.playerId) },
@@ -1490,6 +1497,39 @@ private fun BrowseList(
 /** How a long pressed library item is described on the NFC write sheet. */
 private fun nfcKindOf(mediaType: MediaType): String =
     if (mediaType == MediaType.PLAYLIST) "Playlist" else "Album"
+
+/**
+ * "Pin to Home" for albums and playlists: the item gets its own tile in the Pinned row at the
+ * top of Home. Separate from the playlist "Pin to top", which only orders the Playlists tab.
+ */
+private fun homePinActions(
+    target: ActionSheetItem,
+    homePinUris: Set<String>,
+    onSet: (HomePin, Boolean) -> Unit
+): List<MediaActionSheetExtraAction> {
+    val kind = HomePin.kindOf(target.mediaType) ?: return emptyList()
+    val onHome = target.uri in homePinUris
+    return listOf(
+        MediaActionSheetExtraAction(
+            title = if (onHome) "Unpin from Home" else "Pin to Home",
+            icon = { Icon(if (onHome) Icons.Default.Home else Icons.Outlined.Home, contentDescription = null) },
+            onClick = {
+                onSet(
+                    HomePin(
+                        uri = target.uri,
+                        kind = kind,
+                        itemId = target.itemId,
+                        provider = target.uri.substringBefore("://"),
+                        name = target.title,
+                        imageUrl = target.imageUrl,
+                        subtitle = target.subtitle
+                    ),
+                    !onHome
+                )
+            }
+        )
+    )
+}
 
 private fun Artist.toActionSheetItem() = ActionSheetItem(
     title = name,

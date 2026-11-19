@@ -260,6 +260,7 @@ fun HomeScreen(
     val smartMixMessage by viewModel.smartMixMessage.collectAsStateWithLifecycle()
     val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
     val connectionProbe by viewModel.connectionProbe.collectAsStateWithLifecycle()
+    val homePins by viewModel.homePins.collectAsStateWithLifecycle()
     val pullToRefreshState = rememberPullToRefreshState()
     var showConnectionDialog by rememberSaveable { mutableStateOf(false) }
     val guard = rememberConnectionGuard()
@@ -332,6 +333,20 @@ fun HomeScreen(
                         verticalArrangement = Arrangement.spacedBy(cardMetrics.sectionSpacing),
                         contentPadding = PaddingValues(top = 8.dp, bottom = LocalMiniPlayerPadding.current + 96.dp)
                     ) {
+                        if (homePins.isNotEmpty()) {
+                            item(key = "home_pins", contentType = "home_pins") {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    SectionHeader("Pinned")
+                                    PinnedRow(
+                                        pins = homePins,
+                                        onAlbumClick = onAlbumClick,
+                                        onPlaylistClick = onPlaylistClick,
+                                        metrics = cardMetrics,
+                                        modifier = Modifier.height(maxOf(rowHeights.album, rowHeights.playlist))
+                                    )
+                                }
+                            }
+                        }
                         itemsIndexed(
                             items = sections,
                             key = { _, section -> sectionKey(section) },
@@ -1163,6 +1178,38 @@ private fun AlbumCard(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+/**
+ * Albums and playlists the listener pinned from the Library, newest first. Each tile is the
+ * same card the feed rows use, so a pin looks like the item it opens.
+ */
+@Composable
+private fun PinnedRow(
+    pins: List<net.asksakis.massdroidv2.domain.model.HomePin>,
+    onAlbumClick: (Album) -> Unit,
+    onPlaylistClick: (Playlist) -> Unit,
+    metrics: DiscoverCardMetrics,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier,
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(pins, key = { it.uri }) { pin ->
+            when (pin.kind) {
+                net.asksakis.massdroidv2.domain.model.HomePin.Kind.ALBUM -> {
+                    val album = pin.toAlbum()
+                    AlbumCard(album = album, metrics = metrics, onClick = { onAlbumClick(album) })
+                }
+                net.asksakis.massdroidv2.domain.model.HomePin.Kind.PLAYLIST -> {
+                    val playlist = pin.toPlaylist()
+                    PlaylistCard(playlist = playlist, metrics = metrics, onClick = { onPlaylistClick(playlist) })
+                }
+            }
+        }
     }
 }
 

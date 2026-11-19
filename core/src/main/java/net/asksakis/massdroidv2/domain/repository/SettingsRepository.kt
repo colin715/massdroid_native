@@ -211,6 +211,15 @@ interface SettingsRepository : TrustedServerStore {
     suspend fun setPlaylistPinned(uri: String, pinned: Boolean)
 
     /**
+     * Albums and playlists pinned to Home, newest first. Local only, like
+     * [pinnedPlaylistUris], and independent of it: pinning to the top of the Playlists
+     * tab and pinning to Home are separate choices.
+     */
+    val homePins: Flow<List<net.asksakis.massdroidv2.domain.model.HomePin>>
+
+    suspend fun setHomePinned(pin: net.asksakis.massdroidv2.domain.model.HomePin, pinned: Boolean)
+
+    /**
      * Last known Sendspin player volume (0..100), persisted across process
      * death. The MA server resets a re-registering Sendspin player to 100%, so
      * on startup we seed it back from this value rather than the phone's live
