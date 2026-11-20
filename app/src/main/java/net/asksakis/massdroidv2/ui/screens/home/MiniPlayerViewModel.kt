@@ -38,6 +38,7 @@ data class MiniPlayerUiState(
      */
     val pausableOffline: Boolean = false,
     val playerName: String = "",
+    val selectedPlayerId: String? = null,
     /** False when next would do nothing, for example on a radio alone in the queue. */
     val canNext: Boolean = true
 )
@@ -62,6 +63,39 @@ class MiniPlayerViewModel @Inject constructor(
             (settingsRepository.authToken.first().isNotBlank() || settingsRepository.password.first().isNotBlank())
 
     val noPlayerSelectedEvent: SharedFlow<Unit> = playerRepository.noPlayerSelectedEvent
+    val allPlayers: StateFlow<List<net.asksakis.massdroidv2.domain.model.Player>> = playerRepository.players
+
+    fun addPlayerToGroup(leaderPlayerId: String, memberPlayerId: String) {
+        viewModelScope.launch {
+            try {
+                playerRepository.setGroupMembers(leaderPlayerId, addIds = listOf(memberPlayerId))
+            } catch (e: Exception) {
+                Log.w(TAG, "addPlayerToGroup failed: ${e.message}")
+            }
+        }
+    }
+
+    fun applyGroupMembers(targetPlayerId: String, currentChilds: List<String>, selectedIds: List<String>) {
+        val currentMembers = currentChilds.filter { it != targetPlayerId }
+        val selectedMembers = selectedIds.filter { it != targetPlayerId }
+        val toAdd = selectedMembers.filter { it !in currentMembers }
+        val toRemove = currentMembers.filter { it !in selectedMembers }
+        viewModelScope.launch {
+            try {
+                if (selectedMembers.isEmpty() && currentMembers.isNotEmpty()) {
+                    playerRepository.setGroupMembers(targetPlayerId, removeIds = currentMembers)
+                } else if (toAdd.isNotEmpty() || toRemove.isNotEmpty()) {
+                    playerRepository.setGroupMembers(
+                        targetPlayerId,
+                        addIds = toAdd.ifEmpty { null },
+                        removeIds = toRemove.ifEmpty { null }
+                    )
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "applyGroupMembers failed: ${e.message}")
+            }
+        }
+    }
 
     /** Queue exhausted (play/next rejected with "no more tracks"); UI shows a notice. */
     val queueEndedEvent: SharedFlow<Unit> = playerRepository.queueEndedEvent
@@ -98,6 +132,7 @@ class MiniPlayerViewModel @Inject constructor(
             isPlaying = button.shownPlaying,
             pausableOffline = button.pausableOffline,
             playerName = selectedPlayer?.displayName.orEmpty(),
+            selectedPlayerId = selectedPlayer?.playerId,
             canNext = queueState.skipAvailability().next
         )
     }

@@ -42,6 +42,7 @@ fun MiniPlayer(
     onNext: () -> Unit,
     onQueue: () -> Unit,
     onClick: () -> Unit,
+    onPlayerTargetClick: (() -> Unit)? = null,
     onSwipeLeft: (() -> Unit)? = null,
     onSwipeRight: (() -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -137,7 +138,12 @@ fun MiniPlayer(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = if (onPlayerTargetClick != null) {
+                            Modifier.clickable(onClick = onPlayerTargetClick)
+                        } else {
+                            Modifier
+                        }
                     )
                 }
             }

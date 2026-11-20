@@ -55,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import net.asksakis.massdroidv2.ui.navigation.Routes
 import net.asksakis.massdroidv2.ui.screens.home.MiniPlayerViewModel
+import net.asksakis.massdroidv2.ui.components.GroupPlayersSheet
 import net.asksakis.massdroidv2.ui.screens.nowplaying.NowPlayingScreen
 
 /**
@@ -92,6 +93,7 @@ fun ExpandingPlayerSheet(
     // the queue sheet on top of it.
     var expanded by rememberSaveable { mutableStateOf(false) }
     var showQueueSheet by rememberSaveable { mutableStateOf(false) }
+    var showGroupPlayersSheet by rememberSaveable { mutableStateOf(false) }
     // The back stack entry of the screen the full player was opened over, when it left for
     // an artist or an album. Only Back to that same screen opens it again.
     var expandOnReturnTo by rememberSaveable { mutableStateOf<String?>(null) }
@@ -305,6 +307,7 @@ fun ExpandingPlayerSheet(
                             onNext = { guard { miniPlayerViewModel.next() } },
                             canNext = miniPlayerUiState.canNext,
                             onQueue = { showQueueSheet = true },
+                            onPlayerTargetClick = { showGroupPlayersSheet = true },
                             onClick = { expanded = true; scope.launch { animatable.animateTo(1f, tween(450, easing = FastOutSlowInEasing)) } },
                             onSwipeLeft = { miniPlayerViewModel.switchPlayer(1) },
                             onSwipeRight = { miniPlayerViewModel.switchPlayer(-1) }
@@ -312,6 +315,24 @@ fun ExpandingPlayerSheet(
                     }
                 }
             }
+        }
+    }
+
+    if (showGroupPlayersSheet) {
+        val targetPlayer = miniPlayerViewModel.allPlayers.collectAsStateWithLifecycle()
+            .value.firstOrNull { it.playerId == miniPlayerUiState.selectedPlayerId }
+        targetPlayer?.let { player ->
+            GroupPlayersSheet(
+                targetPlayer = player,
+                allPlayers = miniPlayerViewModel.allPlayers.collectAsStateWithLifecycle().value.filter { it.available },
+                onApply = { selectedIds ->
+                    miniPlayerViewModel.applyGroupMembers(player.playerId, player.groupChilds, selectedIds)
+                },
+                onJoinLeader = { leaderId ->
+                    miniPlayerViewModel.addPlayerToGroup(leaderId, player.playerId)
+                },
+                onDismiss = { showGroupPlayersSheet = false }
+            )
         }
     }
 

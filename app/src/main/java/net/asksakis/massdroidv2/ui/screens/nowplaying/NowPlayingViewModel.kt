@@ -1476,6 +1476,40 @@ class NowPlayingViewModel @Inject constructor(
         }
     }
 
+    fun addPlayerToGroup(leaderPlayerId: String, memberPlayerId: String) {
+        viewModelScope.launch {
+            try {
+                playerRepository.setGroupMembers(leaderPlayerId, addIds = listOf(memberPlayerId))
+            } catch (e: Exception) {
+                Log.w(TAG, "addPlayerToGroup failed: ${e.message}")
+                _error.tryEmit(e.failureMessage("Couldn't add speaker"))
+            }
+        }
+    }
+
+    fun applyGroupMembers(targetPlayerId: String, currentChilds: List<String>, selectedIds: List<String>) {
+        val currentMembers = currentChilds.filter { it != targetPlayerId }
+        val selectedMembers = selectedIds.filter { it != targetPlayerId }
+        val toAdd = selectedMembers.filter { it !in currentMembers }
+        val toRemove = currentMembers.filter { it !in selectedMembers }
+        viewModelScope.launch {
+            try {
+                if (selectedMembers.isEmpty() && currentMembers.isNotEmpty()) {
+                    playerRepository.setGroupMembers(targetPlayerId, removeIds = currentMembers)
+                } else if (toAdd.isNotEmpty() || toRemove.isNotEmpty()) {
+                    playerRepository.setGroupMembers(
+                        targetPlayerId,
+                        addIds = toAdd.ifEmpty { null },
+                        removeIds = toRemove.ifEmpty { null }
+                    )
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "applyGroupMembers failed: ${e.message}")
+                _error.tryEmit(e.failureMessage("Couldn't update speakers"))
+            }
+        }
+    }
+
     fun cycleRepeat() {
         val queue = queueState.value ?: return
         if (queue.isDynamic) {

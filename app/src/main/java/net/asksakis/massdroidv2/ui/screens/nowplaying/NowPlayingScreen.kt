@@ -1,5 +1,6 @@
 package net.asksakis.massdroidv2.ui.screens.nowplaying
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.expandVertically
@@ -91,6 +92,7 @@ import net.asksakis.massdroidv2.domain.model.skipAvailability
 import net.asksakis.massdroidv2.domain.recommendation.MediaIdentity
 import net.asksakis.massdroidv2.ui.components.AddToPlaylistDialog
 import net.asksakis.massdroidv2.ui.components.AddToSmartPlaylistDialog
+import net.asksakis.massdroidv2.ui.components.GroupPlayersSheet
 import net.asksakis.massdroidv2.ui.components.SheetDefaults
 import net.asksakis.massdroidv2.domain.nfc.NfcTagAction
 import net.asksakis.massdroidv2.ui.nfc.NfcWriteChoice
@@ -161,6 +163,7 @@ fun NowPlayingScreen(
         nfcContext.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_NFC)
     }
     var showTransferSheet by rememberSaveable { mutableStateOf(false) }
+    var showGroupPlayersSheet by rememberSaveable { mutableStateOf(false) }
     var showLyricsSheet by rememberSaveable { mutableStateOf(false) }
     val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
     val isLoadingLyrics by viewModel.isLoadingLyrics.collectAsStateWithLifecycle()
@@ -234,6 +237,7 @@ fun NowPlayingScreen(
             showQueueSheet = false
             showPlayerMenu = false
             showTransferSheet = false
+            showGroupPlayersSheet = false
             showLyricsSheet = false
             showPlaylistDialog = false
             showPlayerSettingsDialog = false
@@ -319,7 +323,10 @@ fun NowPlayingScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 player?.displayName ?: "Now Playing",
-                                style = MaterialTheme.typography.titleMedium
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.clickable(enabled = player != null) {
+                                    showGroupPlayersSheet = true
+                                }
                             )
                             if (sleepTimerActive) {
                                 Spacer(modifier = Modifier.width(6.dp))
@@ -414,6 +421,7 @@ fun NowPlayingScreen(
                     },
                     onShowSendspinStatus = { showSendspinStatusSheet = true },
                     onShowPlayerMenu = { showPlayerMenu = true },
+                    onShowGroupPlayers = { showGroupPlayersSheet = true },
                     onNavigateToArtist = onNavigateToArtist,
                     onNavigateToAlbum = onNavigateToAlbum
                 )
@@ -605,6 +613,26 @@ fun NowPlayingScreen(
                     )
                 }
             }
+        }
+    }
+
+    BackHandler(enabled = showGroupPlayersSheet) {
+        showGroupPlayersSheet = false
+    }
+
+    if (showGroupPlayersSheet) {
+        player?.let { targetPlayer ->
+            GroupPlayersSheet(
+                targetPlayer = targetPlayer,
+                allPlayers = allPlayers.filter { it.available },
+                onApply = { selectedIds ->
+                    viewModel.applyGroupMembers(targetPlayer.playerId, targetPlayer.groupChilds, selectedIds)
+                },
+                onJoinLeader = { leaderId ->
+                    viewModel.addPlayerToGroup(leaderId, targetPlayer.playerId)
+                },
+                onDismiss = { showGroupPlayersSheet = false }
+            )
         }
     }
 
@@ -1024,6 +1052,7 @@ private fun NowPlayingLandscape(
     onShowLyrics: () -> Unit,
     onShowSendspinStatus: () -> Unit,
     onShowPlayerMenu: () -> Unit,
+    onShowGroupPlayers: () -> Unit,
     onNavigateToArtist: (String, String, String) -> Unit,
     onNavigateToAlbum: (String, String, String) -> Unit
 ) {
@@ -1110,7 +1139,9 @@ private fun NowPlayingLandscape(
                     style = MaterialTheme.typography.titleSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(enabled = player != null, onClick = onShowGroupPlayers)
                 )
                 if (sleepTimerActive) {
                     Icon(
